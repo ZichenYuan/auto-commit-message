@@ -1,0 +1,5 @@
+.env
+.venv
+.DS_Store
+inspector.config.json
+__pycache__

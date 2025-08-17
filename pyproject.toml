@@ -1,0 +1,20 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "auto-commit-message"
+version = "0.0.1"
+description = "A FastMCP tool to generate commit messages from staged changes"
+requires-python = ">=3.8"
+dependencies = [
+    "fastmcp>=0.1.0",
+    "openai>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "isort",
+    "pytest",
+] 
