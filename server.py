@@ -100,13 +100,14 @@ def openai_generate_commit_message(diff: str, language: Optional[str], model: st
     return msg
 
 # ----- Tools -----
+# The default setting is to only show staged changes.
 @mcp.tool()
 def get_git_diff(
-    path: str = ".",
-    staged_only: bool = True,
-    context_lines: int = 3,
-    filter_path: Optional[str] = None,
-    max_chars: Optional[int] = None
+    path: str = ".",                # The path to the git repository (default: current directory)
+    staged_only: bool = True,       # If True, only show staged changes; if False, show all changes
+    context_lines: int = 3,         # Number of unchanged lines to show before/after each change in the diff output
+    filter_path: Optional[str] = None,  # If provided, only show changes for this file or directory
+    max_chars: Optional[int] = None     # Maximum number of characters to return from the diff (for truncation)
 ) -> str:
     """Return a (redacted) unified git diff. Use staged_only=true to only show staged changes."""
     repo = ensure_repo(path)
@@ -140,7 +141,7 @@ def stage_all(path: str = ".", pattern: Optional[str] = None) -> str:
 def generate_commit_message(
     path: str = ".",
     staged_only: bool = True,
-    language: Optional[str] = None,
+    language: Optional[str] = None,  # The language to use for the generated commit message (e.g., "en" for English, "fr" for French)
     model: Optional[str] = None,
     temperature: Optional[float] = None
 ) -> str:
@@ -150,33 +151,30 @@ def generate_commit_message(
     diff = run_git(args, cwd=repo)
     if not diff:
         return "[commit-buddy] No changes detected; nothing to describe."
-    print(diff)
-    return "testing commit message"
 
-    # diff = redact_secrets(diff)
-    # if len(diff) > MAX_DIFF_CHARS:
-    #     diff = diff[:MAX_DIFF_CHARS] + "\n[commit-buddy] Diff truncated for size.\n"
+    diff = redact_secrets(diff)
+    if len(diff) > MAX_DIFF_CHARS:
+        diff = diff[:MAX_DIFF_CHARS] + "\n[commit-buddy] Diff truncated for size.\n"
 
-    # mdl = model or DEFAULT_OPENAI_MODEL
-    # temp = OPENAI_TEMPERATURE if temperature is None else float(temperature)
-    # message = openai_generate_commit_message(diff=diff, language=language, model=mdl, temperature=temp)
+    mdl = model or DEFAULT_OPENAI_MODEL
+    temp = OPENAI_TEMPERATURE if temperature is None else float(temperature)
+    message = openai_generate_commit_message(diff=diff, language=language, model=mdl, temperature=temp)
     return message
 
 @mcp.tool()
 def commit_and_push(
-    path: str = ".",
-    message: str = "",
-    signoff: bool = False,
-    branch: Optional[str] = None,
-    remote: str = "origin",
-    push: bool = True,
-    allow_main_push: bool = False,
-    generate_if_empty: bool = True,
-    staged_only_for_gen: bool = True,
-    dry_run: bool = False,
-    language: Optional[str] = None,
-    model: Optional[str] = None,
-    temperature: Optional[float] = None
+    path: str = ".",                  # The path to the git repository (default: current directory)
+    message: str = "",                # The commit message to use; if empty and generate_if_empty is True, a message will be generated
+    # signoff: bool = False,            # Whether to add a Signed-off-by line to the commit
+    branch: Optional[str] = None,     # The branch to commit to; if None, uses the current branch
+    remote: str = "origin",           # The name of the remote to push to (default: "origin")
+    push: bool = True,                # Whether to push after committing (default: True)
+    allow_main_push: bool = False,    # If False, block pushing directly to main/master branches
+    staged_only_for_gen: bool = True, # If True, only use staged changes for message generation; else, use all changes
+    dry_run: bool = False,            # If True, show what would happen but do not actually commit or push
+    language: Optional[str] = None,   # The language to use for the generated commit message (e.g., "en" for English)
+    model: Optional[str] = None,      # The OpenAI model to use for commit message generation
+    temperature: Optional[float] = None # The temperature for OpenAI generation (controls randomness)
 ) -> str:
     """
     Commit (and optionally push). If `message` is empty and `generate_if_empty=true`,
@@ -202,7 +200,7 @@ def commit_and_push(
 
     # Autogenerate message if needed
     final_message = (message or "").strip()
-    if not final_message and generate_if_empty:
+    if not final_message:
         # Use the same generator logic as the tool
         args = ["diff", "--staged"] if staged_only_for_gen else ["diff"]
         diff = run_git(args, cwd=repo)
@@ -230,8 +228,8 @@ def commit_and_push(
 
     # Commit
     commit_args = ["commit", "-m", final_message]
-    if signoff:
-        commit_args.append("--signoff")
+    # if signoff:
+    #     commit_args.append("--signoff")
     run_git(commit_args, cwd=repo)
 
     # Optionally push
@@ -249,4 +247,5 @@ def commit_and_push(
         return f"[commit-buddy] Committed locally on {current_branch}. Push skipped."
 # ----- Runner -----
 if __name__ == "__main__":
+    # run the servers
     mcp.run()
