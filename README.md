@@ -171,7 +171,7 @@ Open Cline, go to **Tools**, and you’ll see `commit-buddy` tools.
 5. `commit_and_push` with `{ "dry_run": true }` → preview.
 6. Re-run with `dry_run=false` (and `push=true` if you want to push).
 
-> Pushes to `main/master` are blocked unless you set `allow_main_push=true` in the tool call.
+> If you want pushes to `main/master` to be blocked, set `allow_main_push=false` in the tool call.
 
 ---
 
