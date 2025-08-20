@@ -165,9 +165,9 @@ Open Cline, go to **Tools**, and you’ll see `commit-buddy` tools.
 ## 🧪 Quick test flow
 
 1. Make an edit in your repo.
-2. `get_git_diff` → confirm the diff.
-3. `generate_commit_message` → get a Conventional Commit message.
-4. `stage_all` → stage changes (optional if you already staged).
+2. `stage_all` → stage changes (optional if you already staged).
+3. `get_git_diff` → confirm the diff.
+4. `generate_commit_message` → get a Conventional Commit message.
 5. `commit_and_push` with `{ "dry_run": true }` → preview.
 6. Re-run with `dry_run=false` (and `push=true` if you want to push).
 
