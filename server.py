@@ -169,7 +169,7 @@ def commit_and_push(
     branch: Optional[str] = None,     # The branch to commit to; if None, uses the current branch
     remote: str = "origin",           # The name of the remote to push to (default: "origin")
     push: bool = True,                # Whether to push after committing (default: True)
-    allow_main_push: bool = False,    # If False, block pushing directly to main/master branches
+    allow_main_push: bool = True,    # If False, block pushing directly to main/master branches
     staged_only_for_gen: bool = True, # If True, only use staged changes for message generation; else, use all changes
     dry_run: bool = False,            # If True, show what would happen but do not actually commit or push
     language: Optional[str] = None,   # The language to use for the generated commit message (e.g., "en" for English)
