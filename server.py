@@ -141,11 +141,12 @@ def stage_all(path: str = ".", pattern: Optional[str] = None) -> str:
 def generate_commit_message(
     path: str = ".",
     staged_only: bool = True,
+    use_external_api: bool = False,  # If True, use OpenAI API; if False, ask the current AI assistant
     language: Optional[str] = None,  # The language to use for the generated commit message (e.g., "en" for English, "fr" for French)
     model: Optional[str] = None,
     temperature: Optional[float] = None
 ) -> str:
-    """Generate a Conventional Commits–style message from git diff via OpenAI."""
+    """Generate a Conventional Commits–style message from git diff. Can use OpenAI API or ask the current AI assistant."""
     repo = ensure_repo(path)
     args = ["diff", "--staged"] if staged_only else ["diff"]
     diff = run_git(args, cwd=repo)
@@ -156,10 +157,28 @@ def generate_commit_message(
     if len(diff) > MAX_DIFF_CHARS:
         diff = diff[:MAX_DIFF_CHARS] + "\n[commit-buddy] Diff truncated for size.\n"
 
-    mdl = model or DEFAULT_OPENAI_MODEL
-    temp = OPENAI_TEMPERATURE if temperature is None else float(temperature)
-    message = openai_generate_commit_message(diff=diff, language=language, model=mdl, temperature=temp)
-    return message
+    if use_external_api:
+        # Use OpenAI API (original behavior)
+        mdl = model or DEFAULT_OPENAI_MODEL
+        temp = OPENAI_TEMPERATURE if temperature is None else float(temperature)
+        message = openai_generate_commit_message(diff=diff, language=language, model=mdl, temperature=temp)
+        return message
+    else:
+        # Ask the current AI assistant to generate the commit message
+        language_instruction = f"Write it in {language}." if language else "Write in English."
+        return f"""Please generate a Conventional Commits style commit message for this git diff:
+
+                Requirements:
+                - Start with a conventional type (feat, fix, docs, style, refactor, test, chore, perf, build, ci)
+                - Concise subject line (≤72 chars)  
+                - Optional body with bullet points if needed
+                - Plain text only, no code fences
+                - {language_instruction}
+
+                Git diff:
+                {diff}
+
+                Generate only the commit message, nothing else:"""
 
 @mcp.tool()
 def commit_and_push(
@@ -172,6 +191,7 @@ def commit_and_push(
     allow_main_push: bool = True,    # If False, block pushing directly to main/master branches
     staged_only_for_gen: bool = True, # If True, only use staged changes for message generation; else, use all changes
     dry_run: bool = False,            # If True, show what would happen but do not actually commit or push
+    use_external_api: bool = False,   # If True, use OpenAI API; if False, ask the current AI assistant for message generation
     language: Optional[str] = None,   # The language to use for the generated commit message (e.g., "en" for English)
     model: Optional[str] = None,      # The OpenAI model to use for commit message generation
     temperature: Optional[float] = None # The temperature for OpenAI generation (controls randomness)
@@ -209,9 +229,28 @@ def commit_and_push(
         diff = redact_secrets(diff)
         if len(diff) > MAX_DIFF_CHARS:
             diff = diff[:MAX_DIFF_CHARS] + "\n[commit-buddy] Diff truncated for size.\n"
-        mdl = model or DEFAULT_OPENAI_MODEL
-        temp = OPENAI_TEMPERATURE if temperature is None else float(temperature)
-        final_message = openai_generate_commit_message(diff=diff, language=language, model=mdl, temperature=temp)
+        
+        if use_external_api:
+            # Use OpenAI API (original behavior)
+            mdl = model or DEFAULT_OPENAI_MODEL
+            temp = OPENAI_TEMPERATURE if temperature is None else float(temperature)
+            final_message = openai_generate_commit_message(diff=diff, language=language, model=mdl, temperature=temp)
+        else:
+            # Ask the current AI assistant to generate the commit message
+            language_instruction = f"Write it in {language}." if language else "Write in English."
+            return f"""Please generate a Conventional Commits style commit message for this git diff, then call this tool again with the message parameter set to your generated message:
+
+                    Requirements:
+                    - Start with a conventional type (feat, fix, docs, style, refactor, test, chore, perf, build, ci)
+                    - Concise subject line (≤72 chars)  
+                    - Optional body with bullet points if needed
+                    - Plain text only, no code fences
+                    - {language_instruction}
+
+                    Git diff:
+                    {diff}
+
+                    After generating the commit message, call commit_and_push again with message="your_generated_message" to complete the commit."""
 
     if not final_message:
         raise RuntimeError("Commit message is required (generation disabled or failed).")
